@@ -1,10 +1,10 @@
 {
     "id": "copy-as-note",
-    "name": "Copy As Note",
+    "name": "Copy Note Content",
     "version": "1.0.0",
     "minAppVersion": "0.15.0",
     "main": "main.js",
-    "description": "Adds a mobile-friendly ribbon icon to copy the full raw text of the current note to the clipboard.",
-    "author": "Obsidian User",
+    "description": "Copy the full raw Markdown of the current note to your clipboard (mobile toolbar + desktop ribbon).",
+    "author": "lyqed",
     "isDesktopOnly": false
 }

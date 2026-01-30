@@ -3,7 +3,8 @@
  *
  * Mobile workflow:
  * - This plugin exposes a command that can be manually added to the Obsidian Mobile toolbar.
- * - It does NOT auto-add a ribbon/status bar icon.
+ * Desktop workflow:
+ * - Adds a ribbon icon for quick access.
  */
 
 const { Plugin, Notice } = require('obsidian');
@@ -14,9 +15,15 @@ module.exports = class MobileCopyNotePlugin extends Plugin {
 		this.addCommand({
 			id: 'copy-active-note-to-clipboard',
 			name: 'Copy current note to clipboard',
+			icon: 'copy',
 			callback: async () => {
 				await this.copyCurrentNoteToClipboard();
 			},
+		});
+
+		// Desktop convenience: show a ribbon icon (left sidebar) that runs the same action.
+		this.addRibbonIcon('copy', 'Copy current note to clipboard', async () => {
+			await this.copyCurrentNoteToClipboard();
 		});
 	}
 
@@ -101,4 +108,6 @@ module.exports = class MobileCopyNotePlugin extends Plugin {
 		// No UI elements to clean up; command registration is handled by Obsidian.
 	}
 };
+
+
 
