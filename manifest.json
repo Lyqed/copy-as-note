@@ -3,7 +3,6 @@
     "name": "Copy Note Content",
     "version": "1.0.0",
     "minAppVersion": "0.15.0",
-    "main": "main.js",
     "description": "Copy the full raw Markdown of the current note to your clipboard (mobile toolbar + desktop ribbon).",
     "author": "lyqed",
     "isDesktopOnly": false
