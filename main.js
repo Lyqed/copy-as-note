@@ -7,10 +7,15 @@
  * - Adds a ribbon icon for quick access.
  */
 
-const { Plugin, Notice } = require('obsidian');
+const { Plugin, Notice, PluginSettingTab, Setting } = require('obsidian');
+
+const DEFAULT_SETTINGS = { includeMetadata: false };
 
 module.exports = class MobileCopyNotePlugin extends Plugin {
 	async onload() {
+		await this.loadSettings();
+		this.addSettingTab(new CopyAsNoteSettingTab(this.app, this));
+
 		// Obsidian Mobile toolbar rules: expose a command that the user can add manually.
 		this.addCommand({
 			id: 'copy-active-note-to-clipboard',
@@ -49,6 +54,15 @@ module.exports = class MobileCopyNotePlugin extends Plugin {
 			new Notice('Failed to read current note.');
 			return;
 		}
+
+		// Strip YAML frontmatter unless user opted in
+		if (!this.settings.includeMetadata) {
+			content = content.replace(/^---\n[\s\S]*?\n---\n?/, '');
+		}
+
+		// Prepend note title as H1
+		const title = activeFile.basename;
+		content = `# ${title}\n\n${content.trimStart()}`;
 
 		const copied = await this.tryCopyTextToClipboard(content);
 		if (copied) {
@@ -104,10 +118,38 @@ module.exports = class MobileCopyNotePlugin extends Plugin {
 		}
 	}
 
+	async loadSettings() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
+	}
+
 	onunload() {
 		// No UI elements to clean up; command registration is handled by Obsidian.
 	}
 };
+
+class CopyAsNoteSettingTab extends PluginSettingTab {
+	constructor(app, plugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+	display() {
+		const { containerEl } = this;
+		containerEl.empty();
+		new Setting(containerEl)
+			.setName('Include note metadata')
+			.setDesc('When enabled, YAML frontmatter is included in the copied text.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.includeMetadata)
+				.onChange(async value => {
+					this.plugin.settings.includeMetadata = value;
+					await this.plugin.saveSettings();
+				}));
+	}
+}
 
 
 
