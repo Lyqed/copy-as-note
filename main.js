@@ -7,7 +7,7 @@
  * - Adds a ribbon icon for quick access.
  */
 
-const { Plugin, Notice, PluginSettingTab, Setting } = require('obsidian');
+const { Plugin, Notice, PluginSettingTab, Setting, TFolder, TFile } = require('obsidian');
 
 const DEFAULT_SETTINGS = { includeMetadata: false };
 
@@ -30,6 +30,21 @@ module.exports = class MobileCopyNotePlugin extends Plugin {
 		this.addRibbonIcon('copy', 'Copy current note to clipboard', async () => {
 			await this.copyCurrentNoteToClipboard();
 		});
+
+		// Right-click context menu on folders (works on desktop and mobile).
+		this.registerEvent(
+			this.app.workspace.on('file-menu', (menu, file) => {
+				if (file instanceof TFolder) {
+					menu.addItem(item => {
+						item.setTitle('Copy folder content')
+							.setIcon('copy')
+							.onClick(async () => {
+								await this.copyFolderToClipboard(file);
+							});
+					});
+				}
+			})
+		);
 	}
 
 	async copyCurrentNoteToClipboard() {
@@ -115,6 +130,54 @@ module.exports = class MobileCopyNotePlugin extends Plugin {
 		} catch (error) {
 			console.warn('Copy As Note: execCommand copy fallback failed', error);
 			return false;
+		}
+	}
+
+	collectMarkdownFiles(folder) {
+		const files = [];
+		for (const child of folder.children) {
+			if (child instanceof TFile && child.extension === 'md') {
+				files.push(child);
+			} else if (child instanceof TFolder) {
+				files.push(...this.collectMarkdownFiles(child));
+			}
+		}
+		return files;
+	}
+
+	async copyFolderToClipboard(folder) {
+		const files = this.collectMarkdownFiles(folder);
+		if (files.length === 0) {
+			new Notice('No markdown notes found in folder.');
+			return;
+		}
+
+		files.sort((a, b) => a.path.localeCompare(b.path));
+
+		const parts = [];
+		for (const file of files) {
+			let content;
+			try {
+				content = await this.app.vault.read(file);
+			} catch (error) {
+				console.error(`Copy As Note: Failed to read ${file.path}`, error);
+				continue;
+			}
+
+			if (!this.settings.includeMetadata) {
+				content = content.replace(/^---\n[\s\S]*?\n---\n?/, '');
+			}
+
+			content = `# ${file.basename}\n\n${content.trimStart()}`;
+			parts.push(content);
+		}
+
+		const combined = parts.join('\n\n---\n\n');
+		const copied = await this.tryCopyTextToClipboard(combined);
+		if (copied) {
+			new Notice(`Copied ${parts.length} note${parts.length === 1 ? '' : 's'} to clipboard.`);
+		} else {
+			new Notice('Failed to copy folder content to clipboard.');
 		}
 	}
 
