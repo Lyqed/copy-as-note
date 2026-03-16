@@ -1,7 +1,7 @@
 {
     "id": "copy-as-note",
     "name": "Copy Note Content",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "minAppVersion": "0.15.0",
     "description": "Copy notes to clipboard with title prepended. Supports single notes, whole folders, and a toggle to include/exclude YAML frontmatter.",
     "author": "lyqed",

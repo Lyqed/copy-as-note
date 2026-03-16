@@ -154,7 +154,7 @@ module.exports = class MobileCopyNotePlugin extends Plugin {
 
 		files.sort((a, b) => a.path.localeCompare(b.path));
 
-		const parts = [];
+		const parts = [`### ${folder.name} ###`];
 		for (const file of files) {
 			let content;
 			try {
