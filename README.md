@@ -7,6 +7,9 @@ This plugin is designed to work well on **Obsidian Mobile** (where you can add c
 ## Features
 
 - Copy the full raw text of the active Markdown note (`.md`) to clipboard.
+- Right-click a note, a multi-file selection, or a folder to copy them.
+- Each copied note has its title prepended as an H1; multiple notes are joined with a horizontal rule.
+- Toggle to include or strip YAML frontmatter (Settings → Copy Note Content).
 - Mobile-friendly: exposes a command that can be added to the mobile toolbar.
 - Desktop-friendly: includes a ribbon icon in the left sidebar.
 
@@ -24,6 +27,10 @@ This plugin is designed to work well on **Obsidian Mobile** (where you can add c
 - Click the ribbon icon (left sidebar) to copy the current note.
 - Or run the command from the Command Palette:
   - **Copy current note to clipboard**
+- Or right-click in the file explorer:
+  - A single note → **Copy note to clipboard**
+  - A multi-file selection → **Copy N notes to clipboard**
+  - A folder → **Copy folder content** (recurses into subfolders)
 
 ## Notes / Limitations
 

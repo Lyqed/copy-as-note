@@ -31,7 +31,7 @@ module.exports = class MobileCopyNotePlugin extends Plugin {
 			await this.copyCurrentNoteToClipboard();
 		});
 
-		// Right-click context menu on folders (works on desktop and mobile).
+		// Right-click context menu on a single file or folder (desktop and mobile).
 		this.registerEvent(
 			this.app.workspace.on('file-menu', (menu, file) => {
 				if (file instanceof TFolder) {
@@ -42,7 +42,34 @@ module.exports = class MobileCopyNotePlugin extends Plugin {
 								await this.copyFolderToClipboard(file);
 							});
 					});
+				} else if (file instanceof TFile && file.extension === 'md') {
+					menu.addItem(item => {
+						item.setTitle('Copy note to clipboard')
+							.setIcon('copy')
+							.onClick(async () => {
+								await this.copyFilesToClipboard([file]);
+							});
+					});
 				}
+			})
+		);
+
+		// Right-click context menu on a multi-file selection (desktop).
+		this.registerEvent(
+			this.app.workspace.on('files-menu', (menu, files) => {
+				const markdownFiles = files.filter(
+					file => file instanceof TFile && file.extension === 'md'
+				);
+				if (markdownFiles.length === 0) {
+					return;
+				}
+				menu.addItem(item => {
+					item.setTitle(`Copy ${markdownFiles.length} notes to clipboard`)
+						.setIcon('copy')
+						.onClick(async () => {
+							await this.copyFilesToClipboard(markdownFiles);
+						});
+				});
 			})
 		);
 	}
@@ -60,14 +87,30 @@ module.exports = class MobileCopyNotePlugin extends Plugin {
 			return;
 		}
 
+		const content = await this.formatNote(activeFile);
+		if (content === null) {
+			new Notice('Failed to read current note.');
+			return;
+		}
+
+		const copied = await this.tryCopyTextToClipboard(content);
+		if (copied) {
+			new Notice('Copied current note to clipboard.');
+		} else {
+			new Notice('Failed to copy note to clipboard.');
+		}
+	}
+
+	// Read a markdown file and format it for the clipboard: optional frontmatter
+	// stripping, then the note title prepended as an H1. Returns null on read failure.
+	async formatNote(file) {
 		let content;
 		try {
 			// Read raw file text from the vault (not rendered/preview content)
-			content = await this.app.vault.read(activeFile);
+			content = await this.app.vault.read(file);
 		} catch (error) {
-			console.error('Copy As Note: Failed to read active file', error);
-			new Notice('Failed to read current note.');
-			return;
+			console.error(`Copy As Note: Failed to read ${file.path}`, error);
+			return null;
 		}
 
 		// Strip YAML frontmatter unless user opted in
@@ -76,14 +119,37 @@ module.exports = class MobileCopyNotePlugin extends Plugin {
 		}
 
 		// Prepend note title as H1
-		const title = activeFile.basename;
-		content = `# ${title}\n\n${content.trimStart()}`;
+		return `# ${file.basename}\n\n${content.trimStart()}`;
+	}
 
-		const copied = await this.tryCopyTextToClipboard(content);
+	// Copy one or more markdown files to the clipboard, joined by a horizontal rule.
+	async copyFilesToClipboard(files) {
+		if (files.length === 0) {
+			new Notice('No markdown notes to copy.');
+			return;
+		}
+
+		const sorted = [...files].sort((a, b) => a.path.localeCompare(b.path));
+
+		const parts = [];
+		for (const file of sorted) {
+			const content = await this.formatNote(file);
+			if (content !== null) {
+				parts.push(content);
+			}
+		}
+
+		if (parts.length === 0) {
+			new Notice('Failed to read selected notes.');
+			return;
+		}
+
+		const combined = parts.join('\n\n---\n\n');
+		const copied = await this.tryCopyTextToClipboard(combined);
 		if (copied) {
-			new Notice('Copied current note to clipboard.');
+			new Notice(`Copied ${parts.length} note${parts.length === 1 ? '' : 's'} to clipboard.`);
 		} else {
-			new Notice('Failed to copy note to clipboard.');
+			new Notice('Failed to copy notes to clipboard.');
 		}
 	}
 
@@ -156,20 +222,10 @@ module.exports = class MobileCopyNotePlugin extends Plugin {
 
 		const parts = [`### ${folder.name} ###`];
 		for (const file of files) {
-			let content;
-			try {
-				content = await this.app.vault.read(file);
-			} catch (error) {
-				console.error(`Copy As Note: Failed to read ${file.path}`, error);
-				continue;
+			const content = await this.formatNote(file);
+			if (content !== null) {
+				parts.push(content);
 			}
-
-			if (!this.settings.includeMetadata) {
-				content = content.replace(/^---\n[\s\S]*?\n---\n?/, '');
-			}
-
-			content = `# ${file.basename}\n\n${content.trimStart()}`;
-			parts.push(content);
 		}
 
 		const combined = parts.join('\n\n---\n\n');
